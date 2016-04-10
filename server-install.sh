@@ -159,6 +159,7 @@ EOF
 
 #restart zabbix server
 /etc/init.d/zabbix-server restart
+/etc/init.d/zabbix-agent restart
 
 #restart nginx service
 service nginx restart
