@@ -57,13 +57,7 @@ fastcgi_pass unix:/var/run/php5-fpm.sock;
 }
 EOF
 
-#restart nginx service
-service nginx restart
-service php5-fpm restart
-service fcgiwrap restart
-
 #install zabbix server prerequisites
-#apt-get install php5 php5-dev php5-gd -y
 apt-get install fping -y
 apt-get install libiksemel-dev -y
 apt-get install libxml2-dev -y
@@ -71,6 +65,7 @@ apt-get install libsnmp-dev -y
 apt-get install libssh2-1-dev -y
 apt-get install libopenipmi-dev -y
 apt-get install libcurl4-openssl-dev -y
+apt-get install php5-gd -y
 
 #install all neccesary packages to work with sqlite
 apt-get install libsqlite3-dev sqlite3 php5-sqlite -y
