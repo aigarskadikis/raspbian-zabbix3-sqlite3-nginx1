@@ -63,7 +63,7 @@ service php5-fpm restart
 service fcgiwrap restart
 
 #install zabbix server prerequisites
-apt-get install php5 php5-dev php5-gd -y
+#apt-get install php5 php5-dev php5-gd -y
 apt-get install fping -y
 apt-get install libiksemel-dev -y
 apt-get install libxml2-dev -y
