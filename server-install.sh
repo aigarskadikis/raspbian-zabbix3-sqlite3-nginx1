@@ -63,18 +63,94 @@ sed -i "s/^.*ExternalScripts=.*$/ExternalScripts=\/var\/zabbix\/externalscripts/
 sed -i "s/^LogFile=.*$/LogFile=\/var\/log\/zabbix\/zabbix_server.log/" /usr/local/etc/zabbix_server.conf
 sed -i "s/^DBName=.*$/DBName=\/var\/lib\/sqlite\/zabbix.db/" /usr/local/etc/zabbix_server.conf
 
-#install web frontend
-apt-get php5-fpm libgd2-xpm libpcrecpp0 libxpm4 -y
-apt-get nginx -y
+#install additional libraries for nginx
+apt-get install php5-fpm libgd2-xpm-dev libpcrecpp0 libxpm4 -y
+
+#install nginx web server
+apt-get install nginx -y
+
+#Install the CGI wrapper if you need to run CGI scripts on your server
+apt-get install fcgiwrap -y
+
+#Reduce the number of PHP and CGI processes to free up memory
+sed -i "s/^.*process\.max = .*$/process.max = 2/" /etc/php5/fpm/php-fpm.conf
+
+#Modify the maximum number of processes. In my case I won't have dozens of connections therefore file 
+sed -i "s/^worker_processes .*;$/worker_processes 1;/" /etc/nginx/nginx.conf
+
+#create directory for web server
+mkdir -p /var/www/html
+
+#set web server user to be owner of frontent
+chown -R www-data:www-data /var/www/html
+
+#create php sample
+echo "<?php phpinfo(); ?>" > /var/www/html/index.php
+
+#backup original configuration
+cp /etc/nginx/sites-available/{default,original}
+
+#replace active configuration
+cat > /etc/nginx/sites-available/default << EOF
+server {
+
+listen 80 default_server;
+listen [::]:80 default_server;
+
+root /var/www/html;
+
+index index.php index.html index.htm;
+
+server_name _;
+
+location ~ \.php\$ {
+include snippets/fastcgi-php.conf;
+fastcgi_pass unix:/var/run/php5-fpm.sock;
+}
+
+}
+EOF
+
 mkdir -p /var/www/html/zabbix
 cd ~/zabbix-*/frontends/php/
 cp -a . /var/www/html/zabbix/
+
+#set minimal nginx php settings
+sed -i "s/^post_max_size = .*$/post_max_size = 16M/" /etc/php5/fpm/php.ini
+sed -i "s/^max_execution_time = .*$/max_execution_time = 300/" /etc/php5/fpm/php.ini
+sed -i "s/^max_input_time = .*$/max_input_time = 300/g" /etc/php5/fpm/php.ini
+sed -i "s/^.*date.timezone =.*$/date.timezone = Europe\/Riga/g" /etc/php5/fpm/php.ini
+sed -i "s/^.*always_populate_raw_post_data = .*$/always_populate_raw_post_data = -1/g" /etc/php5/fpm/php.ini
 
 #set apache user to be owner of frontent
 chown -R www-data:www-data /var/www
 
 #set apache user as member of zabbix group
 adduser www-data zabbix
+
+#set zabbix server connection to database
+cat > /var/www/html/zabbix/conf/zabbix.conf.php << EOF
+<?php
+// Zabbix GUI configuration file.
+global \$DB;
+
+\$DB['TYPE']     = 'SQLITE3';
+\$DB['SERVER']   = 'localhost';
+\$DB['PORT']     = '0';
+\$DB['DATABASE'] = '/var/lib/sqlite/zabbix.db';
+\$DB['USER']     = 'zabbix';
+\$DB['PASSWORD'] = '';
+
+// Schema name. Used for IBM DB2 and PostgreSQL.
+\$DB['SCHEMA'] = '';
+
+\$ZBX_SERVER      = 'localhost';
+\$ZBX_SERVER_PORT = '10051';
+\$ZBX_SERVER_NAME = 'zabbix';
+
+\$IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
+?>
+EOF
 
 #restart zabbix server
 /etc/init.d/zabbix-server restart
